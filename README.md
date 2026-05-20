@@ -1,6 +1,6 @@
-# Proposta de Metodologia de Curadoria para o Catálogo de Normas
+# Metodologia de Curadoria para o Catálogo de Normas
 
-**Autor:** Manus AI  
+
 **Data:** 20 de maio de 2026
 
 ## Introdução
