@@ -26,6 +26,10 @@
   box-sizing: border-box;
 }
 
+html, body {
+  overflow-x: hidden;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: #0f172a; /* Fallback color */
@@ -1719,7 +1723,8 @@ mark.search-highlight {
   #nav-drawer {
     position: fixed;
     top: 0;
-    right: -100%;
+    right: 0;
+    transform: translateX(100%);
     width: 280px;
     height: 100vh;
     background: rgba(15, 23, 42, 0.95);
@@ -1729,13 +1734,15 @@ mark.search-highlight {
     display: flex;
     flex-direction: column;
     padding: 5rem 2rem 2rem;
-    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1000;
     box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+    visibility: hidden;
   }
 
   #nav-drawer.open {
-    right: 0;
+    transform: translateX(0);
+    visibility: visible;
   }
 
   #nav-drawer .btn-text {
