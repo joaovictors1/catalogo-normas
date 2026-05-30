@@ -4,7 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Catálogo de Normas | Regulação do Uso da Força</title>
+  <title>Repertório de normas sobre o (controle do) uso da força</title>
+  
+  <meta name="description" content="Repertório acadêmico exaustivo de normas nacionais, internacionais e estaduais sobre o controle do uso da força e a militarização. Projeto PIBIC – Universidade Federal de Sergipe.">
+  <meta name="keywords" content="uso da força, normas, direito, PIBIC, UFS, militarização, direitos humanos, DIH">
+  <meta property="og:title" content="Repertório de Normas sobre o Uso da Força">
+  <meta property="og:description" content="83 normas catalogadas sobre controle do uso da força — Estaduais, Federais e Internacionais.">
+  <meta property="og:type" content="website">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,6 +20,7 @@
 
   <link href="https://unpkg.com/vis-timeline@latest/styles/vis-timeline-graph2d.min.css" rel="stylesheet"
     type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 
   <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -29,6 +36,8 @@
 </head>
 
 <body>
+  <a href="#app-content" class="skip-link">Pular para o conteúdo principal</a>
+
   <!-- Tela de Carregamento -->
   <div id="loader">
     <div class="spinner"></div>
@@ -41,37 +50,55 @@
     const canvas = document.getElementById('canvas3d');
     const app = new Application(canvas);
     
-    app.load('https://prod.spline.design/MDqj8k8BrzSkdzO5/scene.splinecode')
-      .then(() => {
-        const loader = document.getElementById('loader');
-        if (loader) {
-          loader.classList.add('hidden-loader');
-          setTimeout(() => loader.remove(), 500); // Remove do DOM após o fade
-        }
-      })
-      .catch((error) => {
-        console.error('Erro ao carregar modelo 3D do Spline:', error);
-        const loader = document.getElementById('loader');
-        if (loader) {
-          loader.innerHTML = '<p style="color: #ef4444;">O ambiente virtual está privado ou indisponível.</p>';
-          setTimeout(() => loader.classList.add('hidden-loader'), 3000);
-        }
-      });
+    // Lazy load do ambiente 3D para melhorar performance (Performance Phase 7)
+    let splineLoaded = false;
+    function loadSpline() {
+      if (splineLoaded) return;
+      splineLoaded = true;
+      app.load('https://prod.spline.design/MDqj8k8BrzSkdzO5/scene.splinecode')
+        .then(() => {
+          const loader = document.getElementById('loader');
+          if (loader) {
+            loader.classList.add('hidden-loader');
+            setTimeout(() => loader.remove(), 500); // Remove do DOM após o fade
+          }
+        })
+        .catch((error) => {
+          console.error('Erro ao carregar modelo 3D do Spline:', error);
+          const loader = document.getElementById('loader');
+          if (loader) {
+            loader.innerHTML = '<p style="color: #ef4444;">O ambiente virtual está privado ou indisponível.</p>';
+            setTimeout(() => loader.classList.add('hidden-loader'), 3000);
+          }
+        });
+    }
+
+    // Carrega após 500ms ou interação (o que vier primeiro)
+    setTimeout(loadSpline, 500);
+    window.addEventListener('scroll', loadSpline, { once: true });
+    window.addEventListener('mousemove', loadSpline, { once: true });
+    window.addEventListener('touchstart', loadSpline, { once: true });
   </script>
 
   <div id="glass-wrapper">
-    <header>
+    <header role="banner">
     <div class="header-container">
-      <h1><a href="#" id="nav-home">Catálogo Normativo: Uso da Força</a></h1>
-      <nav>
-        <button id="nav-catalog" class="btn-text"><i class="ph ph-books"></i> Catálogo</button>
-        <button id="nav-timeline" class="btn-text"><i class="ph ph-clock-counter-clockwise"></i> Linha do Tempo</button>
-        <button id="nav-about" class="btn-text"><i class="ph ph-info"></i> Sobre</button>
+      <h1><a href="#" id="nav-home" aria-label="Ir para a página inicial">Repertório de normas sobre o (controle do) uso da força</a></h1>
+      
+      <button id="mobile-menu-btn" aria-label="Abrir menu de navegação" aria-expanded="false" aria-controls="nav-drawer">
+        <i class="ph ph-list"></i>
+      </button>
+
+      <nav id="nav-drawer" role="navigation" aria-label="Menu Principal">
+        <button id="nav-catalog" class="btn-text" role="menuitem"><i class="ph ph-books" aria-hidden="true"></i> Repertório</button>
+        <button id="nav-timeline" class="btn-text" role="menuitem"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> Linha do Tempo</button>
+        <button id="nav-dashboard" class="btn-text" role="menuitem"><i class="ph ph-chart-bar" aria-hidden="true"></i> Panorama</button>
+        <button id="nav-about" class="btn-text" role="menuitem"><i class="ph ph-info" aria-hidden="true"></i> Sobre</button>
       </nav>
     </div>
   </header>
 
-  <main id="app-content">
+  <main id="app-content" role="main" aria-live="polite">
   </main>
 
   <footer>
