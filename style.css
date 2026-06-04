@@ -45,6 +45,22 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em;
 }
 
+/* Custom Premium Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 /* ==========================================================================
    3D Canvas Background
    ========================================================================== */
@@ -374,7 +390,7 @@ main#app-content {
 }
 
 .stat-card {
-  background: var(--glass-bg);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.0) 100%);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   padding: 2.5rem 2rem;
@@ -383,6 +399,26 @@ main#app-content {
   text-align: center;
   box-shadow: var(--glass-shadow);
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Spotlight effect */
+.stat-card::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.3s;
+  background: radial-gradient(800px circle at var(--mouse-x) var(--mouse-y), rgba(255, 255, 255, 0.08), transparent 40%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.stat-card:hover::after {
+  opacity: 1;
 }
 
 .stat-card:hover {
@@ -609,7 +645,7 @@ main#app-content {
 
 /* Cards */
 .norm-card {
-  background: var(--glass-bg);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.0) 100%);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   padding: 2rem;
@@ -619,6 +655,24 @@ main#app-content {
   box-shadow: var(--glass-shadow);
   position: relative;
   overflow: hidden;
+  z-index: 1;
+}
+
+/* Spotlight effect */
+.norm-card::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.3s;
+  background: radial-gradient(800px circle at var(--mouse-x) var(--mouse-y), rgba(255, 255, 255, 0.08), transparent 40%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.norm-card:hover::after {
+  opacity: 1;
 }
 
 .norm-card::before {
@@ -1886,18 +1940,31 @@ mark.search-highlight {
 /* Skip Link para leitores de tela e navegação por teclado */
 .skip-link {
   position: absolute;
-  top: -40px;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link:focus {
+  position: absolute;
+  top: 0;
   left: 0;
+  width: auto;
+  height: auto;
+  clip: auto;
+  margin: 0;
   background: var(--primary-color);
   color: #0f172a;
-  padding: 8px 16px;
+  padding: 12px 24px;
   z-index: 9999;
   font-weight: bold;
-  transition: top 0.2s;
   border-radius: 0 0 8px 0;
-}
-.skip-link:focus {
-  top: 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
 
 /* Indicadores de foco universais para acessibilidade */
@@ -1918,33 +1985,68 @@ mark.search-highlight {
   z-index: 1001; /* Above drawer */
 }
 
-@media (max-width: 768px) {
-  #mobile-menu-btn {
-    display: block;
-  }
-  
-  .header-container {
-    justify-content: space-between;
+@media (max-width: 900px) {
+  #spatial-wrapper {
+    flex-direction: column;
   }
 
-  /* Drawer Lateral */
-  #nav-drawer {
+  /* Transform Sidebar into a Top Header */
+  #sidebar-nav {
     position: fixed;
     top: 0;
-    right: 0;
-    transform: translateX(100%);
-    width: 280px;
-    height: 100vh;
-    background: rgba(15, 23, 42, 0.95);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-left: 1px solid var(--glass-border);
-    display: flex;
-    flex-direction: column;
-    padding: 5rem 2rem 2rem;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    left: 0;
+    width: 100%;
+    height: 70px;
+    bottom: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
     z-index: 1000;
-    box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+    border-right: none;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .sidebar-header {
+    padding: 0;
+    border-bottom: none;
+  }
+
+  .sidebar-header h1 a {
+    font-size: 1.1rem;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .sidebar-header i {
+    font-size: 1.3rem;
+  }
+
+  #sidebar-nav footer {
+    display: none;
+  }
+
+  #mobile-menu-btn {
+    display: block;
+    margin-left: auto;
+  }
+
+  /* Mobile Drawer Menu */
+  #nav-drawer {
+    position: fixed;
+    top: 70px;
+    left: 0;
+    width: 100%;
+    height: calc(100vh - 70px);
+    background: rgba(11, 17, 32, 0.98);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    flex-direction: column;
+    padding: 2rem;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 999;
     visibility: hidden;
   }
 
@@ -1953,13 +2055,52 @@ mark.search-highlight {
     visibility: visible;
   }
 
-  #nav-drawer .btn-text {
+  .btn-nav {
     width: 100%;
     justify-content: flex-start;
     padding: 1rem;
     font-size: 1.1rem;
     border-bottom: 1px solid rgba(255,255,255,0.05);
     border-radius: 0;
+  }
+
+  /* Main Content Area */
+  main#app-content {
+    margin-left: 0;
+    margin-top: 70px;
+    padding: 1.5rem 1rem;
+    max-width: 100vw;
+  }
+
+  /* Detail Drawer on Mobile */
+  .drawer-content {
+    width: 100vw;
+    padding: 2rem 1rem;
+  }
+
+  /* Catalog Mobile Adjustments */
+  .catalog-layout {
+    flex-direction: column;
+  }
+
+  .filters {
+    position: static;
+    width: 100%;
+    flex: none;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Home View Stats Mobile */
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .hero {
+    margin-top: 5vh !important;
+  }
+
+  .hero h2 {
+    font-size: 2.2rem !important;
   }
 }
 

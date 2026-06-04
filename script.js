@@ -55,6 +55,14 @@ function openDrawer() {
 }
 
 function navigateTo(view, normId = null, pushHistory = true) {
+  // Close mobile drawer if open
+  const drawer = document.getElementById('nav-drawer');
+  const mBtn = document.getElementById('mobile-menu-btn');
+  if (drawer && drawer.classList.contains('open')) {
+    drawer.classList.remove('open');
+    if (mBtn) mBtn.setAttribute('aria-expanded', 'false');
+  }
+
   state.view = view;
   if (normId) state.currentNorm = catalogData.find(n => n.id === normId);
   
@@ -121,21 +129,30 @@ function renderHome() {
       </div>
       
       <div class="stats-grid" style="margin-top: 4rem; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; text-align:center;">
-        <div class="stat-card reveal" style="padding: 1.5rem; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 12px;">
-          <h3 id="count-total" style="font-size: 2.2rem; color: #F8FAFC;">${catalogData.length}</h3>
+        <div class="stat-card reveal" style="padding: 1.5rem; border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 12px; transition-delay: 0.1s; position: relative; overflow: hidden;">
+          <h3 id="count-total" style="font-size: 2.2rem; color: #F8FAFC;">0</h3>
           <p style="font-size: 0.8rem; color: #94a3b8;">Normas</p>
         </div>
-        <div class="stat-card reveal" style="padding: 1.5rem; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 12px;">
-          <h3 style="font-size: 2.2rem; color: #F8FAFC;">3</h3>
+        <div class="stat-card reveal" style="padding: 1.5rem; border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 12px; transition-delay: 0.2s; position: relative; overflow: hidden;">
+          <h3 id="count-levels" style="font-size: 2.2rem; color: #F8FAFC;">0</h3>
           <p style="font-size: 0.8rem; color: #94a3b8;">Níveis</p>
         </div>
-        <div class="stat-card reveal" style="padding: 1.5rem; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 12px;">
+        <div class="stat-card reveal" style="padding: 1.5rem; border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 12px; transition-delay: 0.3s; position: relative; overflow: hidden;">
           <h3 style="font-size: 1.6rem; color: #F8FAFC; padding-top: 0.4rem; white-space: nowrap; letter-spacing: -1px;">1868 - 2025</h3>
           <p style="font-size: 0.8rem; color: #94a3b8;">Período</p>
         </div>
       </div>
     </div>
   `;
+
+  // Animate counters
+  setTimeout(() => {
+    const countTotal = document.getElementById('count-total');
+    if (countTotal) animateValue(countTotal, 0, catalogData.length, 1200);
+    
+    const countLevels = document.getElementById('count-levels');
+    if (countLevels) animateValue(countLevels, 0, 3, 1200);
+  }, 100);
 }
 
 function renderCatalog() {
@@ -1299,4 +1316,31 @@ if (initialView) {
   render();
   // Set initial state
   window.history.replaceState({ view: state.view, normId: null }, '', window.location.href);
+}
+
+// Global mouse tracking for Spotlight effect on cards
+document.addEventListener('mousemove', e => {
+  document.querySelectorAll('.norm-card, .stat-card').forEach(card => {
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    card.style.setProperty('--mouse-x', `${x}px`);
+    card.style.setProperty('--mouse-y', `${y}px`);
+  });
+});
+
+// Counter Animation function
+function animateValue(obj, start, end, duration) {
+  let startTimestamp = null;
+  const step = (timestamp) => {
+    if (!startTimestamp) startTimestamp = timestamp;
+    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+    obj.innerHTML = Math.floor(progress * (end - start) + start);
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+    } else {
+      obj.innerHTML = end;
+    }
+  };
+  window.requestAnimationFrame(step);
 }
