@@ -24,24 +24,43 @@ const appContainer = document.getElementById('app-content');
 // Sistema de Navegação Principal
 // ==========================================================================
 function render() {
+  if (state.view !== 'detail') {
+    closeDrawer();
+  }
+
+  document.querySelectorAll('.btn-nav').forEach(btn => btn.classList.remove('active'));
+  const activeBtn = document.getElementById(`nav-${state.view === 'detail' ? 'catalog' : state.view}`);
+  if (activeBtn) activeBtn.classList.add('active');
+
   if (state.view === 'home') renderHome();
   else if (state.view === 'catalog') renderCatalog();
   else if (state.view === 'detail') renderDetail();
   else if (state.view === 'timeline') renderTimeline();
   else if (state.view === 'dashboard') renderDashboard();
   else if (state.view === 'compare') renderCompare();
+  else if (state.view === 'graph') renderGraph();
 
-  // Floating compare bar (show on catalog only)
   updateCompareBar();
-
-  // Inicializar animações de scroll sempre que a view mudar
   initScrollAnimations();
+}
+
+function closeDrawer() {
+  const drawer = document.getElementById('detail-drawer');
+  if (drawer) drawer.classList.add('drawer-hidden');
+}
+
+function openDrawer() {
+  const drawer = document.getElementById('detail-drawer');
+  if (drawer) drawer.classList.remove('drawer-hidden');
 }
 
 function navigateTo(view, normId = null, pushHistory = true) {
   state.view = view;
   if (normId) state.currentNorm = catalogData.find(n => n.id === normId);
-  window.scrollTo(0, 0);
+  
+  if (view !== 'detail') {
+    window.scrollTo(0, 0);
+  }
   
   if (pushHistory) {
     const url = new URL(window.location);
@@ -52,14 +71,6 @@ function navigateTo(view, normId = null, pushHistory = true) {
   }
   
   render();
-
-  // Fechar menu mobile se estiver aberto ao navegar
-  const drawer = document.getElementById('nav-drawer');
-  const btn = document.getElementById('mobile-menu-btn');
-  if (drawer && drawer.classList.contains('open')) {
-    drawer.classList.remove('open');
-    if (btn) btn.setAttribute('aria-expanded', 'false');
-  }
 }
 
 // Manipulador de histórico (botões Voltar/Avançar do navegador)
@@ -88,6 +99,7 @@ if (mobileBtn && navDrawer) {
 // Ouvintes de evento do Menu
 document.getElementById('nav-home').addEventListener('click', (e) => { e.preventDefault(); navigateTo('home'); });
 document.getElementById('nav-catalog').addEventListener('click', () => navigateTo('catalog'));
+document.getElementById('nav-graph').addEventListener('click', () => navigateTo('graph'));
 document.getElementById('nav-timeline').addEventListener('click', () => navigateTo('timeline'));
 document.getElementById('nav-dashboard').addEventListener('click', () => navigateTo('dashboard'));
 document.getElementById('nav-about').addEventListener('click', () => {
@@ -100,27 +112,26 @@ document.getElementById('nav-about').addEventListener('click', () => {
 
 function renderHome() {
   appContainer.innerHTML = `
-    <div class="hero fade-in">
-      <h2>Repertório de normas sobre o (controle do) uso da força</h2>
-      <p>Um levantamento exaustivo e rigoroso das normas estaduais (Sergipe), federais e internacionais que regulam, limitam ou impactam o uso da força e a militarização.</p>
+    <div class="hero fade-in" style="margin-top: 15vh; max-width: 600px; text-align: left;">
+      <h2 style="font-size: 3.5rem; line-height: 1.15; margin-bottom: 1rem;">Repertório de Controle do Uso da Força</h2>
+      <p style="font-size: 1.15rem; max-width: 500px; margin: 0 0 2.5rem; color: #cbd5e1; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Um levantamento exaustivo e rigoroso das normas estaduais (Sergipe), federais e internacionais que regulam a militarização.</p>
       
-      <div style="display:flex; gap:1rem; justify-content:center; margin-bottom:3rem;">
-        <button class="btn-primary" onclick="navigateTo('catalog')"><i class="ph ph-magnifying-glass-plus"></i> Explorar o Acervo Completo</button>
-        <button class="btn-primary" style="background: rgba(15, 23, 42, 0.5); border-color: rgba(56, 189, 248, 0.5);" onclick="navigateTo('timeline')"><i class="ph ph-clock-counter-clockwise"></i> Ver Evolução Temporal</button>
+      <div style="display:flex; gap:1rem; flex-wrap: wrap;">
+        <button class="btn-primary" onclick="navigateTo('catalog')"><i class="ph ph-magnifying-glass-plus"></i> Explorar o Acervo</button>
       </div>
       
-      <div class="stats-grid">
-        <div class="stat-card reveal">
-          <h3 id="count-total">${catalogData.length}</h3>
-          <p>Normas Catalogadas</p>
+      <div class="stats-grid" style="margin-top: 4rem; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; text-align:center;">
+        <div class="stat-card reveal" style="padding: 1.5rem; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 12px;">
+          <h3 id="count-total" style="font-size: 2.2rem; color: #F8FAFC;">${catalogData.length}</h3>
+          <p style="font-size: 0.8rem; color: #94a3b8;">Normas</p>
         </div>
-        <div class="stat-card reveal">
-          <h3>3</h3>
-          <p>Níveis Jurisdicionais</p>
+        <div class="stat-card reveal" style="padding: 1.5rem; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 12px;">
+          <h3 style="font-size: 2.2rem; color: #F8FAFC;">3</h3>
+          <p style="font-size: 0.8rem; color: #94a3b8;">Níveis</p>
         </div>
-        <div class="stat-card reveal">
-          <h3>1928-2025</h3>
-          <p>Período Histórico</p>
+        <div class="stat-card reveal" style="padding: 1.5rem; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 12px;">
+          <h3 style="font-size: 1.6rem; color: #F8FAFC; padding-top: 0.4rem; white-space: nowrap; letter-spacing: -1px;">1868 - 2025</h3>
+          <p style="font-size: 0.8rem; color: #94a3b8;">Período</p>
         </div>
       </div>
     </div>
@@ -465,44 +476,45 @@ function renderDetail() {
     }
   }
 
-  appContainer.innerHTML = `
-    <div class="detail-view fade-in">
-      <div class="breadcrumb">
-        <a href="#" onclick="event.preventDefault(); navigateTo('home')">Início</a>
-        <i class="ph ph-caret-right"></i>
-        <a href="#" onclick="event.preventDefault(); navigateTo('catalog')">Repertório</a>
-        <i class="ph ph-caret-right"></i>
-        <span>${breadcrumbAxisText}</span>
-      </div>
+  if (!appContainer.innerHTML.trim()) {
+    renderCatalog();
+  }
 
-      <button class="btn-back" onclick="navigateTo('catalog')"><i class="ph ph-arrow-left"></i> Voltar ao Repertório</button>
-      <h2>${n.title}</h2>
-      <span class="badge-binding ${bindingClass}">${bindingLabel}</span>
-      
-      <div class="meta-grid">
-        <div class="meta-item"><strong>Ano de Adoção:</strong> ${n.year}</div>
-        <div class="meta-item"><strong>Nível Jurisdicional:</strong> ${n.level}</div>
-        <div class="meta-item"><strong>Natureza Jurídica:</strong> ${n.nature}</div>
-        <div class="meta-item"><strong>Tema Principal / Incidência:</strong> ${n.theme}</div>
-        <div class="meta-item"><strong>Status / Situação no Brasil:</strong> ${n.status}</div>
-        <div class="meta-item"><strong>Acesso Oficial / Internalização:</strong> <em style="word-break: break-all;">${n.link}</em></div>
-      </div>
-      
-      <h4 style="margin-bottom: 1rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; color:var(--primary-color);">Principais Disposições Regulatórias</h4>
-      <p style="font-size: 1.1rem; line-height: 1.8; color:var(--text-main); white-space: pre-line;">${n.desc}</p>
-      
-      ${actionsHtml}
-
-      ${relatedHtml}
-
-      <div style="margin-top: 3rem; padding: 1.5rem; background: rgba(245, 158, 11, 0.15); border-left: 4px solid var(--secondary-color); font-size: 0.95rem; border-radius:4px; color: #cbd5e1;">
-        <strong style="color: var(--secondary-color);">Nota Metodológica Acadêmica:</strong><br>
-        Os dados desta ficha foram extraídos sistematicamente do levantamento documental realizado em Maio de 2026. A exatidão do resumo e a classificação dos metadados baseiam-se estritamente e exclusivamente nas informações constantes na planilha original fornecida.
-      </div>
-
-      ${navHtml}
+  const drawerContent = document.getElementById('drawer-content-area');
+  drawerContent.innerHTML = `
+    <button class="btn-close-drawer" aria-label="Fechar painel" onclick="navigateTo('catalog')"><i class="ph ph-x"></i></button>
+    
+    <div class="breadcrumb" style="margin-bottom: 2rem;">
+      <span style="color: var(--primary-color); font-weight: 600;">Repertório</span>
+      <i class="ph ph-caret-right"></i>
+      <span>${breadcrumbAxisText}</span>
     </div>
+
+    <h2 style="font-family: var(--font-serif); font-size: 2.2rem; color: #fff; margin-bottom: 1rem; line-height: 1.2;">${n.title}</h2>
+    <span class="badge-binding ${bindingClass}" style="margin-bottom: 2rem;">${bindingLabel}</span>
+    
+    <div class="meta-grid" style="grid-template-columns: 1fr; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 8px; padding: 1.5rem; gap: 1rem; margin-bottom: 2rem;">
+      <div class="meta-item"><strong>Ano:</strong> ${n.year}</div>
+      <div class="meta-item"><strong>Nível:</strong> ${n.level}</div>
+      <div class="meta-item"><strong>Natureza:</strong> ${n.nature}</div>
+      <div class="meta-item"><strong>Tema:</strong> ${n.theme}</div>
+      <div class="meta-item"><strong>Status:</strong> ${n.status}</div>
+      <div class="meta-item" style="word-break: break-all;"><strong>Link Oficial:</strong> <a href="${n.link}" target="_blank" style="color: var(--primary-color);">${n.link}</a></div>
+    </div>
+    
+    <h4 style="margin-top: 1rem; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; color:var(--primary-color);">Disposições</h4>
+    <p style="font-size: 1.05rem; line-height: 1.8; color:var(--text-main); white-space: pre-line;">${n.desc}</p>
+    
+    ${actionsHtml}
+    ${relatedHtml}
+
+    <div style="margin-top: 3rem; padding: 1.5rem; background: rgba(37, 99, 235, 0.1); border-left: 4px solid var(--primary-color); font-size: 0.9rem; border-radius:4px; color: #cbd5e1;">
+      <strong>Nota Metodológica:</strong> Dados extraídos do levantamento de Maio/2026.
+    </div>
+
+    ${navHtml}
   `;
+  openDrawer();
 }
 
 // ==========================================================================
@@ -928,6 +940,133 @@ window.updateTimelineFilter = function () {
 }
 
 // ==========================================================================
+// Fase 8 — Knowledge Graph (Rede de Conexões)
+// ==========================================================================
+function renderGraph() {
+  appContainer.innerHTML = `
+    <div class="graph-view fade-in">
+      <h2><i class="ph ph-graph"></i> Rede de Conexões Normativas</h2>
+      <p class="dash-subtitle">Explore visualmente as referências cruzadas entre as normas. Arraste para mover, use o scroll para aplicar zoom e clique em um nó para ver os detalhes.</p>
+      
+      <div class="tl-legend" style="justify-content:center; margin-bottom:1.5rem;">
+        <span class="tl-legend-item"><span class="tl-legend-dot" style="background:#2dd4bf"></span>Estadual</span>
+        <span class="tl-legend-item"><span class="tl-legend-dot" style="background:#818cf8"></span>Federal</span>
+        <span class="tl-legend-item"><span class="tl-legend-dot" style="background:#38bdf8"></span>Internacional</span>
+        <span class="tl-legend-item"><span class="tl-legend-dot" style="background:#f59e0b"></span>Regional</span>
+      </div>
+
+      <div id="network-container"></div>
+    </div>
+  `;
+
+  const nodes = [];
+  const edges = [];
+
+  const levelColor = (level) => {
+    if (level.includes('Estadual')) return '#2dd4bf'; // Teal
+    if (level.includes('Federal')) return '#818cf8'; // Indigo
+    if (level.includes('Internacional')) return '#38bdf8'; // Sky Blue
+    if (level.includes('Regional')) return '#f59e0b'; // Amber
+    return '#94a3b8';
+  };
+
+  // Calcular o "peso" de cada norma para definir o tamanho da bolinha
+  const nodeWeight = {};
+  catalogData.forEach(n => {
+    if (n.relatedIds) {
+      n.relatedIds.forEach(targetId => {
+        nodeWeight[targetId] = (nodeWeight[targetId] || 0) + 1; // Quantos apontam para ela
+        nodeWeight[n.id] = (nodeWeight[n.id] || 0) + 0.5; // Bônus por ela apontar para outros
+      });
+    }
+  });
+
+  catalogData.forEach(n => {
+    const tooltipEl = document.createElement('div');
+    tooltipEl.innerHTML = `<div style="max-width:300px; white-space:pre-wrap; font-family:Inter,sans-serif;"><strong>${n.title}</strong><br><br>${n.theme} | Ano: ${n.year}<br><br><em style="color:#38bdf8; font-size:0.8rem;">Clique na bolinha para ler a ficha completa.</em></div>`;
+
+    const weight = nodeWeight[n.id] || 0;
+    const baseColor = levelColor(n.level);
+
+    nodes.push({
+      id: n.id,
+      title: tooltipEl,
+      value: weight, // vis.js usa 'value' para escalar dinamicamente o tamanho
+      color: {
+        background: baseColor,
+        border: '#ffffff',
+        highlight: { background: '#ffffff', border: baseColor }
+      },
+      shadow: {
+        enabled: true,
+        color: baseColor,
+        size: 15,
+        x: 0,
+        y: 0
+      }
+    });
+
+    if (n.relatedIds && n.relatedIds.length > 0) {
+      n.relatedIds.forEach(targetId => {
+        if (catalogData.some(x => x.id === targetId)) {
+          edges.push({
+            from: n.id,
+            to: targetId,
+            color: { color: 'rgba(255,255,255,0.15)', highlight: '#38bdf8' },
+            arrows: { to: { enabled: true, scaleFactor: 0.5 } }
+          });
+        }
+      });
+    }
+  });
+
+  const container = document.getElementById('network-container');
+  const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+  
+  const options = {
+    nodes: {
+      shape: 'dot',
+      scaling: {
+        min: 10,
+        max: 35,
+        label: { enabled: false }
+      },
+      borderWidth: 2,
+      borderWidthSelected: 4
+    },
+    edges: {
+      width: 1,
+      smooth: { type: 'continuous' }
+    },
+    physics: {
+      forceAtlas2Based: {
+        gravitationalConstant: -50,
+        centralGravity: 0.01,
+        springLength: 100,
+        springConstant: 0.08
+      },
+      maxVelocity: 50,
+      solver: 'forceAtlas2Based',
+      timestep: 0.35,
+      stabilization: { iterations: 150 }
+    },
+    interaction: {
+      hover: true,
+      tooltipDelay: 200,
+      zoomView: true
+    }
+  };
+
+  const network = new vis.Network(container, data, options);
+
+  network.on('click', function(params) {
+    if (params.nodes.length > 0) {
+      navigateTo('detail', params.nodes[0]);
+    }
+  });
+}
+
+// ==========================================================================
 // Fase 6 — Comparador e Exportação
 // ==========================================================================
 window.toggleCompare = function(id) {
@@ -1114,8 +1253,12 @@ function initScrollAnimations() {
 // Acessibilidade: Navegação por teclado
 // ==========================================================================
 document.addEventListener('keydown', (e) => {
-  // Fechar menu mobile com Escape
   if (e.key === 'Escape') {
+    // Close detail drawer if open
+    if (state.view === 'detail') {
+      navigateTo('catalog');
+    }
+
     const drawer = document.getElementById('nav-drawer');
     const btn = document.getElementById('mobile-menu-btn');
     if (drawer && drawer.classList.contains('open')) {
@@ -1131,6 +1274,17 @@ document.addEventListener('keydown', (e) => {
       state.searchQuery = '';
       renderCatalog();
     }
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  const overlay = document.getElementById('drawer-overlay');
+  if (overlay) {
+    overlay.addEventListener('click', () => {
+      if (state.view === 'detail') {
+        navigateTo('catalog');
+      }
+    });
   }
 });
 
