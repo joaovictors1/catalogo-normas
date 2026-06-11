@@ -3,6 +3,7 @@
 // ==========================================================================
 let state = {
   view: 'home',
+  backgroundView: 'home',
   currentNorm: null,
   searchQuery: '',
   filterLevel: 'Todos',
@@ -24,6 +25,9 @@ const appContainer = document.getElementById('app-content');
 // Sistema de Navegação Principal
 // ==========================================================================
 function render() {
+  const drawer = document.getElementById('detail-drawer');
+  const wasDetailOpen = drawer && !drawer.classList.contains('drawer-hidden');
+
   if (state.view !== 'detail') {
     closeDrawer();
   }
@@ -32,13 +36,20 @@ function render() {
   const activeBtn = document.getElementById(`nav-${state.view === 'detail' ? 'catalog' : state.view}`);
   if (activeBtn) activeBtn.classList.add('active');
 
-  if (state.view === 'home') renderHome();
-  else if (state.view === 'catalog') renderCatalog();
-  else if (state.view === 'detail') renderDetail();
-  else if (state.view === 'timeline') renderTimeline();
-  else if (state.view === 'dashboard') renderDashboard();
-  else if (state.view === 'compare') renderCompare();
-  else if (state.view === 'graph') renderGraph();
+  if (state.view === 'detail') {
+    renderDetail();
+  } else {
+    // Evita re-renderizar o fundo se o painel de detalhes estava aberto e estamos voltando à mesma visualização
+    const isExitingDetailToBackground = wasDetailOpen && (state.view === state.backgroundView);
+    if (!isExitingDetailToBackground) {
+      if (state.view === 'home') renderHome();
+      else if (state.view === 'catalog') renderCatalog();
+      else if (state.view === 'timeline') renderTimeline();
+      else if (state.view === 'dashboard') renderDashboard();
+      else if (state.view === 'compare') renderCompare();
+      else if (state.view === 'graph') renderGraph();
+    }
+  }
 
   updateCompareBar();
   initScrollAnimations();
@@ -63,11 +74,26 @@ function navigateTo(view, normId = null, pushHistory = true) {
     if (mBtn) mBtn.setAttribute('aria-expanded', 'false');
   }
 
+  const prevView = state.view;
   state.view = view;
-  if (normId) state.currentNorm = catalogData.find(n => n.id === normId);
+  
+  if (normId) {
+    state.currentNorm = catalogData.find(n => n.id === normId);
+  } else if (view !== 'detail') {
+    state.currentNorm = null;
+  }
   
   if (view !== 'detail') {
-    window.scrollTo(0, 0);
+    state.backgroundView = view;
+  }
+
+  // Evita rolar para o topo se estiver apenas fechando o painel de detalhes para voltar à mesma visualização de fundo
+  if (view !== 'detail') {
+    if (prevView === 'detail' && view === state.backgroundView) {
+      // Mantém a posição de rolagem original do fundo
+    } else if (view !== prevView) {
+      window.scrollTo(0, 0);
+    }
   }
   
   if (pushHistory) {
@@ -110,9 +136,7 @@ document.getElementById('nav-catalog').addEventListener('click', () => navigateT
 document.getElementById('nav-graph').addEventListener('click', () => navigateTo('graph'));
 document.getElementById('nav-timeline').addEventListener('click', () => navigateTo('timeline'));
 document.getElementById('nav-dashboard').addEventListener('click', () => navigateTo('dashboard'));
-document.getElementById('nav-about').addEventListener('click', () => {
-  alert("Projeto de Pesquisa Acadêmica.\nLevantamento documental baseado no acervo de Maio/2026.\nTodos os dados foram extraídos estritamente das fontes fornecidas.");
-});
+document.getElementById('nav-about').addEventListener('click', () => showAboutDrawer());
 
 // ==========================================================================
 // Views (Renderização de Conteúdo)
@@ -120,39 +144,158 @@ document.getElementById('nav-about').addEventListener('click', () => {
 
 function renderHome() {
   appContainer.innerHTML = `
-    <div class="hero fade-in" style="margin-top: 15vh; max-width: 600px; text-align: left;">
-      <h2 style="font-size: 3.5rem; line-height: 1.15; margin-bottom: 1rem;">Repertório de Controle do Uso da Força</h2>
-      <p style="font-size: 1.15rem; max-width: 500px; margin: 0 0 2.5rem; color: #cbd5e1; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Um levantamento exaustivo e rigoroso das normas estaduais (Sergipe), federais e internacionais que regulam a militarização.</p>
+    <div class="hero-docly fade-in">
       
-      <div style="display:flex; gap:1rem; flex-wrap: wrap;">
-        <button class="btn-primary" onclick="navigateTo('catalog')"><i class="ph ph-magnifying-glass-plus"></i> Explorar o Acervo</button>
+      <h2 class="hero-title" style="color: var(--primary-color);">Repertório de Normas sobre o Uso da Força</h2>
+      <p class="hero-subtitle">
+        Documentação estruturada das normas estaduais (Sergipe), federais e internacionais sobre o controle do uso da força e militarização.
+      </p>
+      
+      <div class="hero-search-wrapper">
+        <div class="hero-search-container" onclick="document.getElementById('home-search-input').focus()">
+          <i class="ph ph-magnifying-glass search-icon"></i>
+          <input type="text" id="home-search-input" placeholder="Buscar normas (ex: lei ordinária, direitos humanos, armas)..." autocomplete="off" onfocus="showSearchDropdown()" onblur="hideSearchDropdownDelayed(event)" onkeydown="handleHomeSearchKey(event)">
+          <div class="search-shortcut-keys">
+            <kbd>⌘</kbd> <kbd>K</kbd>
+          </div>
+        </div>
+        
+        <!-- Extensão Inferior (Dropdown de Busca) -->
+        <div id="home-search-dropdown" class="search-dropdown-hidden">
+          <div class="dropdown-section">
+            <span class="dropdown-section-title"><i class="ph ph-sparkle"></i> Sugestões Rápidas</span>
+            <div class="dropdown-suggestions">
+              <button class="dropdown-tag" onmousedown="submitHomeSearch('Direitos Humanos')">Direitos Humanos</button>
+              <button class="dropdown-tag" onmousedown="submitHomeSearch('Uso da Força')">Uso da Força</button>
+              <button class="dropdown-tag" onmousedown="submitHomeSearch('Decreto Sergipe')">Decreto Sergipe</button>
+              <button class="dropdown-tag" onmousedown="submitHomeSearch('Militarização')">Militarização</button>
+            </div>
+          </div>
+          
+          <div class="dropdown-section" style="margin-top: 1rem;">
+            <span class="dropdown-section-title"><i class="ph ph-funnel"></i> Explorar por Eixo</span>
+            <div class="dropdown-axes-list">
+              <div class="dropdown-axis-item" onmousedown="submitHomeSearchAxis('4')">
+                <span class="axis-num">Eixo 4</span>
+                <span class="axis-name">Direitos Humanos</span>
+              </div>
+              <div class="dropdown-axis-item" onmousedown="submitHomeSearchAxis('A')">
+                <span class="axis-num">Eixo A</span>
+                <span class="axis-name">Normas Locais (Sergipe)</span>
+              </div>
+              <div class="dropdown-axis-item" onmousedown="submitHomeSearchAxis('3')">
+                <span class="axis-num">Eixo 3</span>
+                <span class="axis-name">Dir. Internacional Humanitário</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       
-      <div class="stats-grid" style="margin-top: 4rem; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; text-align:center;">
-        <div class="stat-card reveal" style="padding: 1.5rem; border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 12px; transition-delay: 0.1s; position: relative; overflow: hidden;">
-          <h3 id="count-total" style="font-size: 2.2rem; color: #F8FAFC;">0</h3>
-          <p style="font-size: 0.8rem; color: #94a3b8;">Normas</p>
+      <div class="hero-shortcuts">
+        <span class="shortcuts-label">Atalhos:</span>
+        <button class="shortcut-tag" onclick="state.filterAxis='4'; navigateTo('catalog');">Direitos Humanos</button>
+        <button class="shortcut-tag" onclick="state.filterLevel='Internacional'; navigateTo('catalog');">Internacional</button>
+        <button class="shortcut-tag" onclick="state.filterLevel='Estadual'; navigateTo('catalog');">Sergipe</button>
+      </div>
+
+      <div class="section-title">
+        <h3>Explorar por categoria</h3>
+      </div>
+      
+      <div class="docly-grid-auto">
+        <div class="docly-card" onclick="navigateTo('catalog')">
+          <div class="docly-icon-wrapper"><i class="ph ph-books"></i></div>
+          <h4>Catálogo de Normas</h4>
+          <p>Explore o acervo completo e estruturado de normas.</p>
+          <span class="docly-link">Acessar Repertório <i class="ph ph-arrow-up-right"></i></span>
         </div>
-        <div class="stat-card reveal" style="padding: 1.5rem; border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 12px; transition-delay: 0.2s; position: relative; overflow: hidden;">
-          <h3 id="count-levels" style="font-size: 2.2rem; color: #F8FAFC;">0</h3>
-          <p style="font-size: 0.8rem; color: #94a3b8;">Níveis</p>
+        
+        <div class="docly-card" onclick="navigateTo('graph')">
+          <div class="docly-icon-wrapper"><i class="ph ph-graph"></i></div>
+          <h4>Grafo de Relações</h4>
+          <p>Visualização interativa das conexões entre as normas.</p>
+          <span class="docly-link">Ver Grafo <i class="ph ph-arrow-up-right"></i></span>
         </div>
-        <div class="stat-card reveal" style="padding: 1.5rem; border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 12px; transition-delay: 0.3s; position: relative; overflow: hidden;">
-          <h3 style="font-size: 1.6rem; color: #F8FAFC; padding-top: 0.4rem; white-space: nowrap; letter-spacing: -1px;">1868 - 2025</h3>
-          <p style="font-size: 0.8rem; color: #94a3b8;">Período</p>
+        
+        <div class="docly-card" onclick="navigateTo('timeline')">
+          <div class="docly-icon-wrapper"><i class="ph ph-clock-counter-clockwise"></i></div>
+          <h4>Evolução Histórica</h4>
+          <p>Acompanhe a linha do tempo diacrônica das normas.</p>
+          <span class="docly-link">Ver Evolução <i class="ph ph-arrow-up-right"></i></span>
+        </div>
+
+        <div class="docly-card" onclick="navigateTo('dashboard')">
+          <div class="docly-icon-wrapper"><i class="ph ph-chart-bar"></i></div>
+          <h4>Panorama Analítico</h4>
+          <p>Métricas, estatísticas e gráficos sobre o uso da força.</p>
+          <span class="docly-link">Ver Dashboard <i class="ph ph-arrow-up-right"></i></span>
+        </div>
+      </div>
+
+      <div class="section-title mt-4">
+        <h3>Sobre o Projeto</h3>
+      </div>
+      
+      <div class="docly-grid-2">
+        <div class="docly-card-horizontal" onclick="showAboutDrawer()">
+          <div class="docly-icon-wrapper secondary"><i class="ph ph-info"></i></div>
+          <div class="docly-card-content">
+            <h4>Sobre a Pesquisa</h4>
+            <p>Metodologia e informações do projeto PIBIC UFS.</p>
+          </div>
+          <span class="docly-link">Saber mais <i class="ph ph-arrow-up-right"></i></span>
+        </div>
+
+        <div class="docly-card-horizontal" onclick="showContactDrawer()">
+          <div class="docly-icon-wrapper secondary"><i class="ph ph-envelope-simple"></i></div>
+          <div class="docly-card-content">
+            <h4>Entrar em Contato</h4>
+            <p>Fale com o grupo proprietário da pesquisa.</p>
+          </div>
+          <span class="docly-link">Contato <i class="ph ph-arrow-up-right"></i></span>
+        </div>
+      </div>
+      
+      <!-- Stats Summary at bottom -->
+      <div class="docly-stats">
+        <div class="docly-stat-item">
+          <h3 id="count-total">0</h3>
+          <span>Normas</span>
+        </div>
+        <div class="docly-stat-item">
+          <h3 id="count-levels">0</h3>
+          <span>Níveis</span>
+        </div>
+        <div class="docly-stat-item">
+          <h3>1868-2025</h3>
+          <span>Período</span>
         </div>
       </div>
     </div>
   `;
 
-  // Animate counters
-  setTimeout(() => {
+  // Animate counters after loader is gone to prevent CPU lag from blocking frames
+  const triggerHomeCounters = () => {
     const countTotal = document.getElementById('count-total');
     if (countTotal) animateValue(countTotal, 0, catalogData.length, 1200);
     
     const countLevels = document.getElementById('count-levels');
     if (countLevels) animateValue(countLevels, 0, 3, 1200);
-  }, 100);
+  };
+
+  const loader = document.getElementById('loader');
+  if (loader && !loader.classList.contains('hidden-loader')) {
+    const checkLoader = setInterval(() => {
+      const loaderCheck = document.getElementById('loader');
+      if (!loaderCheck || loaderCheck.classList.contains('hidden-loader')) {
+        clearInterval(checkLoader);
+        setTimeout(triggerHomeCounters, 300);
+      }
+    }, 100);
+  } else {
+    setTimeout(triggerHomeCounters, 100);
+  }
 }
 
 function renderCatalog() {
@@ -186,7 +329,11 @@ function renderCatalog() {
   
   // Binding type filter
   if (state.filterBinding !== 'Todos') {
-    filtered = filtered.filter(n => (n.bindingType || 'Hard Law') === state.filterBinding);
+    filtered = filtered.filter(n => {
+      const isIntOrReg = n.level.toLowerCase().includes('internacional') || n.level.toLowerCase().includes('regional');
+      if (!isIntOrReg) return false;
+      return (n.bindingType || 'Hard Law') === state.filterBinding;
+    });
   }
   
   // Year range filter
@@ -229,18 +376,35 @@ function renderCatalog() {
     return t;
   };
 
+  const emptyStateHtml = `
+    <div class="empty-state reveal">
+      <div class="empty-state-icon">
+        <i class="ph ph-magnifying-glass-slash"></i>
+      </div>
+      <h4>Nenhuma norma encontrada</h4>
+      <p>Não encontramos nenhum documento que corresponda aos critérios ou palavra-chave selecionados.</p>
+      <button class="btn-clear-filters-empty" onclick="clearFilters()">
+        <i class="ph ph-trash"></i> Limpar Filtros
+      </button>
+    </div>
+  `;
+
   const cardsHtml = filtered.length > 0 ? filtered.map(n => {
     const bindingClass = (n.bindingType || 'Hard Law').toLowerCase().includes('soft') ? 'soft' : 'hard';
     const isSelected = state.selectedNorms.includes(n.id);
+    const levelClass = `level-${n.level.toLowerCase()}`;
+    const isIntOrReg = n.level.toLowerCase().includes('internacional') || n.level.toLowerCase().includes('regional');
+    const bindingBadgeHtml = isIntOrReg ? `<span class="badge-binding-small ${bindingClass}">${(n.bindingType || 'Hard Law').toUpperCase()}</span>` : '';
+    
     return `
-    <div class="norm-card reveal ${isSelected ? 'card-selected' : ''}">
+    <div class="norm-card reveal ${levelClass} ${isSelected ? 'card-selected' : ''}">
       <label class="compare-check" onclick="event.stopPropagation()">
         <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleCompare('${n.id}')">
         <span class="checkmark"><i class="ph ph-check"></i></span>
       </label>
       <div class="badges">
-        <span class="badge level">${n.level}</span>
-        <span class="badge-binding-small ${bindingClass}">${(n.bindingType || 'Hard Law').toUpperCase()}</span>
+        <span class="badge level ${levelClass}">${n.level}</span>
+        ${bindingBadgeHtml}
         <span class="badge">${n.nature}</span>
       </div>
       <h3>${highlightText(n.title)}</h3>
@@ -249,26 +413,35 @@ function renderCatalog() {
       <button class="btn-text" style="margin-left: 0; margin-top: 1rem; color: var(--secondary-color); font-weight: bold; padding:0;" onclick="navigateTo('detail', '${n.id}')">Ler Documento Completo <i class="ph ph-arrow-right"></i></button>
     </div>
   `;
-  }).join('') : '<p>Nenhuma norma encontrada com os critérios atuais. <br><em style="font-size:0.9rem; color:var(--text-muted);">Tente ajustar ou limpar os filtros.</em></p>';
+  }).join('') : emptyStateHtml;
 
   const countHtml = `<strong>${filtered.length}</strong> de ${catalogData.length} normas encontradas.`;
 
-  // If already in catalog, just update results
+  // If already in catalog, just update results with a smooth fade-in morph transition
   const existingGrid = document.querySelector('.grid-cards');
   if (existingGrid && state.view === 'catalog') {
-    existingGrid.innerHTML = cardsHtml;
-    document.getElementById('catalog-count').innerHTML = countHtml;
-    const chipsContainer = document.querySelector('.filter-chips-container');
-    if (chipsContainer) chipsContainer.innerHTML = chipsHtml;
-    // Update filter controls to match state
-    syncFilterControls();
-    // Re-observe
-    const observer = new IntersectionObserver((entries, obs) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) { entry.target.classList.add('active'); obs.unobserve(entry.target); }
-      });
-    }, { root: null, rootMargin: '0px', threshold: 0.1 });
-    document.querySelectorAll('.grid-cards .reveal').forEach(el => observer.observe(el));
+    existingGrid.style.opacity = '0.3';
+    existingGrid.style.transform = 'translateY(10px)';
+    existingGrid.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+    
+    setTimeout(() => {
+      existingGrid.innerHTML = cardsHtml;
+      existingGrid.style.opacity = '1';
+      existingGrid.style.transform = 'translateY(0)';
+      
+      document.getElementById('catalog-count').innerHTML = countHtml;
+      const chipsContainer = document.querySelector('.filter-chips-container');
+      if (chipsContainer) chipsContainer.innerHTML = chipsHtml;
+      // Update filter controls to match state
+      syncFilterControls();
+      // Re-observe
+      const observer = new IntersectionObserver((entries, obs) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) { entry.target.classList.add('active'); obs.unobserve(entry.target); }
+        });
+      }, { root: null, rootMargin: '0px', threshold: 0.1 });
+      document.querySelectorAll('.grid-cards .reveal').forEach(el => observer.observe(el));
+    }, 120);
     return;
   }
 
@@ -379,7 +552,13 @@ function renderCatalog() {
       </aside>
       
       <div class="results-area">
-        <input type="text" id="search-input" class="search-bar" placeholder="Buscar por palavra-chave, título, tema ou descrição..." value="${state.searchQuery}" oninput="debouncedSearch(event)">
+        <div class="search-wrapper">
+          <i class="ph ph-magnifying-glass search-icon-catalog"></i>
+          <input type="text" id="search-input" placeholder="Buscar por palavra-chave, título, tema ou descrição..." value="${state.searchQuery}" oninput="debouncedSearch(event)">
+          <div class="search-shortcut-hint">
+            <kbd>⌘</kbd> <kbd>K</kbd>
+          </div>
+        </div>
         <div class="filter-chips-container">${chipsHtml}</div>
         <p id="catalog-count" style="margin-bottom: 1rem; color: var(--text-muted); font-size:0.9rem;">${countHtml}</p>
         
@@ -396,10 +575,24 @@ function renderDetail() {
   const n = state.currentNorm;
   if (!n) return navigateTo('catalog');
 
-  // Determine binding type
-  const bindingType = n.bindingType || 'Hard Law';
-  const bindingClass = bindingType.toLowerCase().includes('soft') ? 'soft' : 'hard';
-  const bindingLabel = bindingType.toUpperCase();
+  const drawer = document.getElementById('detail-drawer');
+  if (drawer) {
+    if (state.backgroundView === 'timeline' || state.backgroundView === 'graph') {
+      drawer.classList.add('is-modal');
+    } else {
+      drawer.classList.remove('is-modal');
+    }
+  }
+
+  // Determine binding type if applicable
+  const isIntOrReg = n.level.toLowerCase().includes('internacional') || n.level.toLowerCase().includes('regional');
+  let bindingBadgeHtml = '';
+  if (isIntOrReg) {
+    const bindingType = n.bindingType || 'Hard Law';
+    const bindingClass = bindingType.toLowerCase().includes('soft') ? 'soft' : 'hard';
+    const bindingLabel = bindingType.toUpperCase();
+    bindingBadgeHtml = `<span class="badge-binding ${bindingClass}" style="margin-bottom: 2rem;">${bindingLabel}</span>`;
+  }
 
   // Axis info for breadcrumb
   const axisLabel = n.axis ? `Eixo ${n.axis}` : '';
@@ -415,12 +608,17 @@ function renderDetail() {
   let relatedHtml = '';
   if (relatedNorms.length > 0) {
     const relatedCardsHtml = relatedNorms.map(rn => {
-      const rnBindingType = rn.bindingType || 'Hard Law';
-      const rnBindingClass = rnBindingType.toLowerCase().includes('soft') ? 'soft' : 'hard';
+      const rnIsIntOrReg = rn.level.toLowerCase().includes('internacional') || rn.level.toLowerCase().includes('regional');
+      let rnBindingBadgeHtml = '';
+      if (rnIsIntOrReg) {
+        const rnBindingType = rn.bindingType || 'Hard Law';
+        const rnBindingClass = rnBindingType.toLowerCase().includes('soft') ? 'soft' : 'hard';
+        rnBindingBadgeHtml = `<span class="badge-binding-small ${rnBindingClass}">${rnBindingType.toUpperCase()}</span>`;
+      }
       return `
         <div class="related-card" onclick="navigateTo('detail', '${rn.id}')">
           <span class="badge level">${rn.level}</span>
-          <span class="badge-binding-small ${rnBindingClass}">${rnBindingType.toUpperCase()}</span>
+          ${rnBindingBadgeHtml}
           <h5>${rn.title}</h5>
           <p class="related-desc">${rn.desc.substring(0, 120)}...</p>
           <span class="related-link"><i class="ph ph-arrow-right"></i> Ver ficha completa</span>
@@ -494,21 +692,22 @@ function renderDetail() {
   }
 
   if (!appContainer.innerHTML.trim()) {
+    state.backgroundView = 'catalog';
     renderCatalog();
   }
 
   const drawerContent = document.getElementById('drawer-content-area');
   drawerContent.innerHTML = `
-    <button class="btn-close-drawer" aria-label="Fechar painel" onclick="navigateTo('catalog')"><i class="ph ph-x"></i></button>
+    <button class="btn-close-drawer" aria-label="Fechar painel" onclick="navigateTo(state.backgroundView || 'catalog')"><i class="ph ph-x"></i></button>
     
     <div class="breadcrumb" style="margin-bottom: 2rem;">
       <span style="color: var(--primary-color); font-weight: 600;">Repertório</span>
       <i class="ph ph-caret-right"></i>
       <span>${breadcrumbAxisText}</span>
     </div>
-
+ 
     <h2 style="font-family: var(--font-serif); font-size: 2.2rem; color: #fff; margin-bottom: 1rem; line-height: 1.2;">${n.title}</h2>
-    <span class="badge-binding ${bindingClass}" style="margin-bottom: 2rem;">${bindingLabel}</span>
+    ${bindingBadgeHtml}
     
     <div class="meta-grid" style="grid-template-columns: 1fr; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 8px; padding: 1.5rem; gap: 1rem; margin-bottom: 2rem;">
       <div class="meta-item"><strong>Ano:</strong> ${n.year}</div>
@@ -531,6 +730,7 @@ function renderDetail() {
 
     ${navHtml}
   `;
+  drawerContent.scrollTop = 0;
   openDrawer();
 }
 
@@ -586,6 +786,8 @@ function renderTimeline() {
   };
 
   const bindingBadge = (n) => {
+    const isIntOrReg = n.level.toLowerCase().includes('internacional') || n.level.toLowerCase().includes('regional');
+    if (!isIntOrReg) return '';
     const bt = (n.bindingType || 'Hard Law');
     const cls = bt.toLowerCase().includes('soft') ? 'soft' : 'hard';
     return `<span class="tl-binding ${cls}">${bt.toUpperCase()}</span>`;
@@ -593,31 +795,58 @@ function renderTimeline() {
 
   const decadeKeys = Object.keys(decades).map(Number).sort((a, b) => a - b);
 
-  const decadesHtml = decadeKeys.map(dec => {
+  const decadesHtml = decadeKeys.map((dec, decIndex) => {
     const items = decades[dec];
-    const itemsHtml = items.map(n => `
+    
+    let prevDecadeColor = 'transparent';
+    if (decIndex > 0) {
+      const prevItems = decades[decadeKeys[decIndex - 1]];
+      if (prevItems && prevItems.length > 0) {
+        prevDecadeColor = levelColor(prevItems[prevItems.length - 1].level);
+      }
+    }
+    const firstItemColor = items.length > 0 ? levelColor(items[0].level) : 'transparent';
+
+    const itemsHtml = items.map((n, i) => {
+      let nextColor = null;
+      if (i < items.length - 1) {
+        nextColor = levelColor(items[i + 1].level);
+      } else {
+        const nextDecade = decadeKeys[decIndex + 1];
+        if (nextDecade && decades[nextDecade].length > 0) {
+          nextColor = levelColor(decades[nextDecade][0].level);
+        } else {
+          nextColor = 'transparent';
+        }
+      }
+      const currentColor = levelColor(n.level);
+
+      return `
       <div class="tl-item" onclick="navigateTo('detail', '${n.id}')">
-        <div class="tl-dot" style="background: ${levelColor(n.level)}"></div>
-        <div class="tl-card" style="--level-color: ${levelColor(n.level)}">
+        <div class="tl-segment" style="background: linear-gradient(to bottom, ${currentColor}, ${nextColor});"></div>
+        <div class="tl-dot" style="background: ${currentColor}"></div>
+        <div class="tl-card" style="--level-color: ${currentColor}">
           <div class="tl-card-header">
             <span class="tl-year">${n._year}</span>
             ${bindingBadge(n)}
-            <span class="tl-level-tag" style="color: ${levelColor(n.level)}">${n.level}</span>
+            <span class="tl-level-tag" style="color: ${currentColor}">${n.level}</span>
           </div>
           <h5 class="tl-title">${n.title}</h5>
           <p class="tl-desc">${n.desc.substring(0, 120)}...</p>
           <span class="tl-action"><i class="ph ph-arrow-right"></i> Ver ficha completa</span>
         </div>
       </div>
-    `).join('');
+    `}).join('');
 
     return `
       <div class="tl-decade">
         <div class="tl-decade-marker" onclick="this.parentElement.classList.toggle('collapsed')">
+          <div class="tl-segment tl-segment-marker" style="background: linear-gradient(to bottom, ${prevDecadeColor}, ${firstItemColor});"></div>
           <span class="tl-decade-label">${dec}s</span>
           <span class="tl-decade-count">${items.length} norma${items.length > 1 ? 's' : ''}</span>
           <i class="ph ph-caret-down tl-decade-chevron"></i>
         </div>
+
         <div class="tl-decade-items">
           ${itemsHtml}
         </div>
@@ -667,8 +896,9 @@ function renderTimeline() {
 function renderDashboard() {
   // Pre-calculate stats
   const totalNorms = catalogData.length;
-  const hardLaw = catalogData.filter(n => (n.bindingType || 'Hard Law') === 'Hard Law').length;
-  const softLaw = totalNorms - hardLaw;
+  const intAndRegNorms = catalogData.filter(n => n.level.toLowerCase().includes('internacional') || n.level.toLowerCase().includes('regional'));
+  const hardLaw = intAndRegNorms.filter(n => (n.bindingType || 'Hard Law') === 'Hard Law').length;
+  const softLaw = intAndRegNorms.filter(n => (n.bindingType || 'Hard Law') === 'Soft Law').length;
   const vigentes = catalogData.filter(n => n.status.includes('Vigente')).length;
   const ratificados = catalogData.filter(n => n.status.includes('Ratificou')).length;
 
@@ -1014,6 +1244,7 @@ function renderGraph() {
         border: '#ffffff',
         highlight: { background: '#ffffff', border: baseColor }
       },
+      originalColor: baseColor,
       shadow: {
         enabled: true,
         color: baseColor,
@@ -1049,10 +1280,17 @@ function renderGraph() {
         label: { enabled: false }
       },
       borderWidth: 2,
-      borderWidthSelected: 4
+      borderWidthSelected: 4,
+      shadow: {
+        enabled: true,
+        size: 15,
+        x: 0,
+        y: 0
+      }
     },
     edges: {
       width: 1,
+      color: { color: 'rgba(255,255,255,0.1)', highlight: 'rgba(255,255,255,0.6)', hover: 'rgba(255,255,255,0.3)' },
       smooth: { type: 'continuous' }
     },
     physics: {
@@ -1075,6 +1313,33 @@ function renderGraph() {
   };
 
   const network = new vis.Network(container, data, options);
+
+  // Desativa simulação física após estabilização para economizar CPU (Performance Phase 2)
+  network.once("stabilizationIterationsDone", function () {
+    network.setOptions({ physics: false });
+  });
+
+  // Efeitos de Hover para Focus
+  network.on("hoverNode", function (params) {
+    const hoveredNode = params.node;
+    const connectedNodes = network.getConnectedNodes(hoveredNode);
+    connectedNodes.push(hoveredNode);
+
+    const updateArray = data.nodes.get().map(n => {
+      if (!connectedNodes.includes(n.id)) {
+        return { id: n.id, color: { background: 'rgba(255,255,255,0.05)', border: 'transparent' } };
+      }
+      return { id: n.id, shadow: { size: 30 } };
+    });
+    data.nodes.update(updateArray);
+  });
+
+  network.on("blurNode", function (params) {
+    const updateArray = data.nodes.get().map(n => {
+      return { id: n.id, color: { background: n.originalColor, border: '#ffffff' }, shadow: { size: 15 } };
+    });
+    data.nodes.update(updateArray);
+  });
 
   network.on('click', function(params) {
     if (params.nodes.length > 0) {
@@ -1151,7 +1416,10 @@ function renderCompare() {
     { key: 'year', label: 'Ano' },
     { key: 'level', label: 'Nível Jurisdicional' },
     { key: 'nature', label: 'Natureza Jurídica' },
-    { key: 'bindingType', label: 'Força Vinculante', fn: n => n.bindingType || 'Hard Law' },
+    { key: 'bindingType', label: 'Força Vinculante', fn: n => {
+      const isIntOrReg = n.level.toLowerCase().includes('internacional') || n.level.toLowerCase().includes('regional');
+      return isIntOrReg ? (n.bindingType || 'Hard Law') : 'Não se aplica';
+    } },
     { key: 'theme', label: 'Tema Principal' },
     { key: 'status', label: 'Status no Brasil' },
     { key: 'axis', label: 'Eixo Temático', fn: n => n.axis ? `${n.axis} — ${n.axisName || ''}` : '—' },
@@ -1212,7 +1480,9 @@ window.exportCSV = function() {
   const rows = ids.map(id => {
     const n = catalogData.find(x => x.id === id);
     if (!n) return null;
-    return [n.id, n.title, n.year, n.level, n.nature, n.bindingType||'Hard Law', n.theme, n.status, `${n.axis||''} - ${n.axisName||''}`, n.desc, n.citationABNT||'', n.fullLink||''];
+    const isIntOrReg = n.level.toLowerCase().includes('internacional') || n.level.toLowerCase().includes('regional');
+    const bindingVal = isIntOrReg ? (n.bindingType || 'Hard Law') : 'Não se aplica';
+    return [n.id, n.title, n.year, n.level, n.nature, bindingVal, n.theme, n.status, `${n.axis||''} - ${n.axisName||''}`, n.desc, n.citationABNT||'', n.fullLink||''];
   }).filter(Boolean);
 
   const escape = v => `"${String(v).replace(/"/g, '""')}"`;
@@ -1267,13 +1537,90 @@ function initScrollAnimations() {
 }
 
 // ==========================================================================
-// Acessibilidade: Navegação por teclado
+// Funções da Extensão Inferior (Dropdown de Busca na Home)
+// ==========================================================================
+window.showSearchDropdown = function() {
+  const dropdown = document.getElementById('home-search-dropdown');
+  const wrapper = document.querySelector('.hero-search-wrapper');
+  if (dropdown) {
+    dropdown.classList.remove('search-dropdown-hidden');
+  }
+  if (wrapper) {
+    wrapper.classList.add('dropdown-active');
+  }
+}
+
+window.hideSearchDropdownDelayed = function(e) {
+  const dropdown = document.getElementById('home-search-dropdown');
+  const wrapper = document.querySelector('.hero-search-wrapper');
+  if (dropdown) {
+    // Timeout para dar tempo de registrar o clique (onmousedown) nos itens do dropdown
+    setTimeout(() => {
+      // Evita fechar se o input ainda estiver em foco por algum motivo
+      if (document.activeElement !== document.getElementById('home-search-input')) {
+        dropdown.classList.add('search-dropdown-hidden');
+        if (wrapper) {
+          wrapper.classList.remove('dropdown-active');
+        }
+      }
+    }, 200);
+  }
+}
+
+window.submitHomeSearch = function(query) {
+  state.searchQuery = query;
+  navigateTo('catalog');
+}
+
+window.submitHomeSearchAxis = function(axis) {
+  state.filterAxis = axis;
+  navigateTo('catalog');
+}
+
+window.handleHomeSearchKey = function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const query = e.target.value.trim();
+    state.searchQuery = query;
+    navigateTo('catalog');
+  }
+}
+
+// ==========================================================================
+// Acessibilidade e Atalhos do Teclado
 // ==========================================================================
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    // Close detail drawer if open
-    if (state.view === 'detail') {
+  // Ctrl+K ou Cmd+K para focar o input de busca (Home ou Catálogo)
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    const homeInput = document.getElementById('home-search-input');
+    const catalogInput = document.getElementById('search-input');
+    
+    if (state.view === 'home' && homeInput) {
+      homeInput.focus();
+    } else if (state.view === 'catalog' && catalogInput) {
+      catalogInput.focus();
+    } else {
       navigateTo('catalog');
+      setTimeout(() => {
+        const catInput = document.getElementById('search-input');
+        if (catInput) catInput.focus();
+      }, 150);
+    }
+  }
+
+  if (e.key === 'Escape') {
+    // Fechar painel de detalhes
+    if (state.view === 'detail') {
+      navigateTo(state.backgroundView || 'catalog');
+    }
+
+    // Fechar dropdown de busca da Home se estiver focado
+    const homeInput = document.getElementById('home-search-input');
+    if (homeInput && document.activeElement === homeInput) {
+      homeInput.blur();
+      const dropdown = document.getElementById('home-search-dropdown');
+      if (dropdown) dropdown.classList.add('search-dropdown-hidden');
     }
 
     const drawer = document.getElementById('nav-drawer');
@@ -1284,7 +1631,7 @@ document.addEventListener('keydown', (e) => {
       if (btn) btn.focus();
     }
     
-    // Limpar busca se o input estiver focado
+    // Limpar busca se o acervo principal estiver focado
     const searchInput = document.getElementById('search-input');
     if (document.activeElement === searchInput) {
       searchInput.value = '';
@@ -1299,7 +1646,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (overlay) {
     overlay.addEventListener('click', () => {
       if (state.view === 'detail') {
-        navigateTo('catalog');
+        navigateTo(state.backgroundView || 'catalog');
+      } else {
+        closeDrawer();
       }
     });
   }
@@ -1335,7 +1684,8 @@ function animateValue(obj, start, end, duration) {
   const step = (timestamp) => {
     if (!startTimestamp) startTimestamp = timestamp;
     const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-    obj.innerHTML = Math.floor(progress * (end - start) + start);
+    const ease = 1 - Math.pow(1 - progress, 3); // Cubic-out easing for a smooth slowdown
+    obj.innerHTML = Math.floor(ease * (end - start) + start);
     if (progress < 1) {
       window.requestAnimationFrame(step);
     } else {
@@ -1343,4 +1693,119 @@ function animateValue(obj, start, end, duration) {
     }
   };
   window.requestAnimationFrame(step);
+}
+
+// ==========================================================================
+// Gavetas Customizadas Premium (Substituição de alert() nativo)
+// ==========================================================================
+window.showAboutDrawer = function() {
+  const drawerContent = document.getElementById('drawer-content-area');
+  if (!drawerContent) return;
+  
+  state.backgroundView = state.view;
+  
+  drawerContent.innerHTML = `
+    <button class="btn-close-drawer" aria-label="Fechar painel" onclick="closeDrawer()"><i class="ph ph-x"></i></button>
+    
+    <div class="breadcrumb" style="margin-bottom: 2rem;">
+      <span style="color: var(--primary-color); font-weight: 600;">Institucional</span>
+      <i class="ph ph-caret-right"></i>
+      <span>Sobre o Projeto</span>
+    </div>
+    
+    <h2 style="font-family: var(--font-serif); font-size: 2.2rem; color: #fff; margin-bottom: 1.5rem; line-height: 1.2;">Sobre o Projeto de Pesquisa</h2>
+    
+    <div class="meta-grid" style="grid-template-columns: 1fr; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 8px; padding: 1.5rem; gap: 1rem; margin-bottom: 2rem;">
+      <div class="meta-item"><strong>Instituição:</strong> Universidade Federal de Sergipe (UFS)</div>
+      <div class="meta-item"><strong>Programa:</strong> Programa Institucional de Bolsas de Iniciação Científica (PIBIC)</div>
+      <div class="meta-item"><strong>Período de Levantamento:</strong> Acervo documental de normas atualizado até Maio de 2026.</div>
+      <div class="meta-item"><strong>Escopo:</strong> 111 instrumentos jurídicos catalogados (Sergipe, Federal e Internacionais/Regionais) relativos ao uso da força e militarização da segurança pública.</div>
+    </div>
+    
+    <h4 style="margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; color:var(--primary-color);">Objetivo e Metodologia</h4>
+    <p style="font-size: 1.05rem; line-height: 1.8; color:var(--text-main); margin-bottom: 1.5rem;">
+      O presente repositório acadêmico exaustivo tem como objetivo central catalogar, organizar e analisar sistematicamente a regulação jurídica e as tendências de militarização da segurança no Brasil e em Sergipe.
+    </p>
+    <p style="font-size: 1.05rem; line-height: 1.8; color:var(--text-main); margin-bottom: 1.5rem;">
+      Toda a compilação documental obedece a um protocolo de rigor metodológico, registrando referências de legislação de "Hard Law" vinculantes e diretrizes de "Soft Law" que servem como parâmetros hermenêuticos para a atuação de forças de segurança e direitos humanos.
+    </p>
+    
+    <div style="margin-top: 3rem; padding: 1.5rem; background: rgba(37, 99, 235, 0.1); border-left: 4px solid var(--primary-color); font-size: 0.9rem; border-radius:4px; color: #cbd5e1;">
+      <strong>Nota Metodológica:</strong> Todas as informações fornecidas estão alinhadas com as pesquisas de graduação e pós-graduação vinculadas à Faculdade de Direito da UFS.
+    </div>
+  `;
+  
+  const drawer = document.getElementById('detail-drawer');
+  if (drawer) {
+    drawer.classList.remove('is-modal');
+    openDrawer();
+  }
+}
+
+window.showContactDrawer = function() {
+  const drawerContent = document.getElementById('drawer-content-area');
+  if (!drawerContent) return;
+  
+  state.backgroundView = state.view;
+  
+  drawerContent.innerHTML = `
+    <button class="btn-close-drawer" aria-label="Fechar painel" onclick="closeDrawer()"><i class="ph ph-x"></i></button>
+    
+    <div class="breadcrumb" style="margin-bottom: 2rem;">
+      <span style="color: var(--primary-color); font-weight: 600;">Institucional</span>
+      <i class="ph ph-caret-right"></i>
+      <span>Contato</span>
+    </div>
+    
+    <h2 style="font-family: var(--font-serif); font-size: 2.2rem; color: #fff; margin-bottom: 1.5rem; line-height: 1.2;">Fale Conosco</h2>
+    <p style="color: var(--text-muted); margin-bottom: 2rem; font-size: 0.95rem;">Entre em contato com o grupo de pesquisa do PIBIC na Universidade Federal de Sergipe.</p>
+    
+    <div style="background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 12px; padding: 2rem; margin-bottom: 2rem;">
+      <form id="drawer-contact-form" onsubmit="handleContactSubmit(event)" style="display: flex; flex-direction: column; gap: 1.2rem;">
+        <div class="filter-group" style="margin-bottom: 0;">
+          <label style="color:#fff; font-weight:500; font-size: 0.85rem; margin-bottom: 0.4rem;">Nome Completo</label>
+          <input type="text" placeholder="Seu nome..." required style="width:100%; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; padding: 0.8rem 1rem; font-family:var(--font-sans); outline:none;">
+        </div>
+        
+        <div class="filter-group" style="margin-bottom: 0;">
+          <label style="color:#fff; font-weight:500; font-size: 0.85rem; margin-bottom: 0.4rem;">E-mail</label>
+          <input type="email" placeholder="seuemail@exemplo.com" required style="width:100%; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; padding: 0.8rem 1rem; font-family:var(--font-sans); outline:none;">
+        </div>
+        
+        <div class="filter-group" style="margin-bottom: 0;">
+          <label style="color:#fff; font-weight:500; font-size: 0.85rem; margin-bottom: 0.4rem;">Mensagem</label>
+          <textarea placeholder="Escreva sua mensagem aqui..." required rows="4" style="width: 100%; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; padding: 0.8rem 1rem; font-family: var(--font-sans); resize: none; outline:none;"></textarea>
+        </div>
+        
+        <button class="btn-primary" type="submit" style="width: 100%; justify-content: center; margin-top: 0.5rem; padding: 0.8rem 1.5rem; border-radius: 8px; cursor:pointer;">
+          <i class="ph ph-paper-plane-tilt"></i> Enviar Mensagem
+        </button>
+      </form>
+    </div>
+    
+    <div style="display: flex; flex-direction: column; gap: 0.75rem; color: var(--text-muted); font-size: 0.9rem;">
+      <div style="display:flex; align-items:center; gap:0.5rem;"><i class="ph ph-envelope-simple" style="color: var(--primary-color); font-size:1.1rem;"></i> contato.pesquisa@ufs.br</div>
+      <div style="display:flex; align-items:start; gap:0.5rem;"><i class="ph ph-map-pin" style="color: var(--primary-color); font-size:1.1rem; margin-top:0.1rem;"></i> Cidade Universitária Prof. José Aloísio de Campos, São Cristóvão - SE</div>
+    </div>
+  `;
+  
+  const drawer = document.getElementById('detail-drawer');
+  if (drawer) {
+    drawer.classList.remove('is-modal');
+    openDrawer();
+  }
+}
+
+window.handleContactSubmit = function(e) {
+  e.preventDefault();
+  const form = document.getElementById('drawer-contact-form');
+  if (form) {
+    form.innerHTML = `
+      <div style="text-align: center; padding: 2rem 0; animation: fadeIn 0.4s ease;">
+        <i class="ph ph-check-circle" style="font-size: 3.5rem; color: #22c55e; margin-bottom: 1rem; display: block;"></i>
+        <h4 style="color: #fff; font-size: 1.25rem; margin-bottom: 0.5rem; font-family:var(--font-serif);">Mensagem Enviada!</h4>
+        <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5;">Obrigado pelo contato. O grupo de pesquisa responderá a sua mensagem por e-mail em breve.</p>
+      </div>
+    `;
+  }
 }

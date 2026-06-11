@@ -45,7 +45,9 @@
     <p>Carregando ambiente virtual...</p>
   </div>
 
-  <canvas id="canvas3d"></canvas>
+  <div id="canvas-wrapper" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; background: #0B1120; transform: scale(1.15);">
+    <canvas id="canvas3d" style="width: 100%; height: 100%; outline: none; pointer-events: auto;"></canvas>
+  </div>
   <script type="module">
     import { Application } from '@splinetool/runtime';
     const canvas = document.getElementById('canvas3d');
@@ -79,35 +81,84 @@
     window.addEventListener('scroll', loadSpline, { once: true });
     window.addEventListener('mousemove', loadSpline, { once: true });
     window.addEventListener('touchstart', loadSpline, { once: true });
+
+    // Script agressivo para remover a marca d'água do Spline (Shadow DOM)
+    setInterval(() => {
+      // O Spline cria uma div sem ID anexada ao body com um shadowRoot
+      const divs = document.querySelectorAll('body > div');
+      divs.forEach(div => {
+        // Se a div possui um shadowRoot contendo o logo ou link do spline
+        if (div.shadowRoot) {
+          const content = div.shadowRoot.innerHTML;
+          if (content.includes('spline') || content.includes('Logo')) {
+            div.remove();
+          }
+        }
+        // Fallback: se a div tiver posição absoluta no canto inferior direito
+        if (div.style.position === 'absolute' && (div.style.right === '20px' || div.style.right === '16px') && parseInt(div.style.zIndex) > 1000) {
+          div.remove();
+        }
+      });
+      // Fallback para âncoras diretas
+      document.querySelectorAll('a[href*="spline.design"]').forEach(a => a.remove());
+    }, 1000);
   </script>
 
   <div id="spatial-wrapper">
-    <!-- Barra Lateral Esquerda -->
-    <aside id="sidebar-nav" role="banner">
-      <div class="sidebar-header">
-        <h1><a href="#" id="nav-home" aria-label="Ir para a página inicial"><i class="ph ph-globe-hemisphere-west"></i> Repertório PIBIC</a></h1>
+    <!-- Barra de Navegação Superior -->
+    <header id="top-nav" role="banner">
+      <div class="nav-left">
+        <a href="#" id="nav-home" aria-label="Ir para a página inicial" class="logo">
+          <i class="ph ph-globe-hemisphere-west"></i> Repertório PIBIC
+        </a>
       </div>
       
+
+
       <button id="mobile-menu-btn" aria-label="Abrir menu de navegação" aria-expanded="false" aria-controls="nav-drawer">
         <i class="ph ph-list"></i>
       </button>
 
       <nav id="nav-drawer" role="navigation" aria-label="Menu Principal">
-        <button id="nav-catalog" class="btn-nav" role="menuitem"><i class="ph ph-books" aria-hidden="true"></i> <span>Repertório</span></button>
-        <button id="nav-graph" class="btn-nav" role="menuitem"><i class="ph ph-graph" aria-hidden="true"></i> <span>Grafo</span></button>
-        <button id="nav-timeline" class="btn-nav" role="menuitem"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i> <span>Evolução</span></button>
-        <button id="nav-dashboard" class="btn-nav" role="menuitem"><i class="ph ph-chart-bar" aria-hidden="true"></i> <span>Panorama</span></button>
-        <button id="nav-about" class="btn-nav" role="menuitem"><i class="ph ph-info" aria-hidden="true"></i> <span>Sobre</span></button>
+        <button id="nav-catalog" class="btn-nav" role="menuitem"><span>Repertório</span></button>
+        <button id="nav-graph" class="btn-nav" role="menuitem"><span>Grafo</span></button>
+        <button id="nav-timeline" class="btn-nav" role="menuitem"><span>Evolução</span></button>
+        <button id="nav-dashboard" class="btn-nav" role="menuitem"><span>Panorama</span></button>
+        <div class="nav-divider"></div>
+        <button id="nav-about" class="btn-nav-outline" role="menuitem"><span>Sobre o Projeto</span></button>
       </nav>
-
-      <footer>
-        <p>Levantamento Sistemático (2026)</p>
-      </footer>
-    </aside>
+    </header>
 
     <!-- Área de Conteúdo Principal Flutuante -->
     <main id="app-content" role="main" aria-live="polite">
     </main>
+
+    <!-- Rodapé Acadêmico Premium -->
+    <footer id="app-footer">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <span class="logo"><i class="ph ph-globe-hemisphere-west"></i> Repertório PIBIC</span>
+          <p>Universidade Federal de Sergipe (UFS)<br>Programa de Bolsas de Iniciação Científica (PIBIC)</p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-section">
+            <h5>Navegação</h5>
+            <button onclick="navigateTo('catalog')">Repertório</button>
+            <button onclick="navigateTo('graph')">Grafo</button>
+            <button onclick="navigateTo('timeline')">Evolução</button>
+            <button onclick="navigateTo('dashboard')">Panorama</button>
+          </div>
+          <div class="footer-section">
+            <h5>Institucional</h5>
+            <button onclick="showAboutDrawer()">Sobre o Projeto</button>
+            <button onclick="showContactDrawer()">Contato</button>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 PIBIC UFS. Levantamento documental acadêmico. Todos os direitos reservados.</p>
+      </div>
+    </footer>
 
     <!-- Painel Lateral Deslizante (Off-Canvas Drawer) -->
     <div id="detail-drawer" class="drawer-hidden">
@@ -116,11 +167,12 @@
         <!-- Renderizado dinamicamente -->
       </div>
     </div>
+    </div>
   </div>
 
   <!-- Scripts -->
   <script type="text/javascript" src="https://unpkg.com/vis-data@latest/dist/vis-data.min.js"></script>
-  <script type="text/javascript" src="https://unpkg.com/vis-timeline@latest/dist/vis-timeline-graph2d.min.js"></script>
+  <script type="text/javascript" src="https://unpkg.com/vis-network@latest/dist/vis-network.min.js"></script>
   <script src="data.js"></script>
   <script src="script.js"></script>
 </body>
